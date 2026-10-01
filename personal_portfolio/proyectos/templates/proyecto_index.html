@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load static %}
+{% block page_content %}
+<h1>Proyectos</h1>
+<div class="row">
+    {% for proyecto in proyectos %}
+    <div class="col-md-4">
+        <div class="card mb-2">
+            <img class="card-img-top" src="{% static proyecto.imagen %}">
+            <div class="card-body">
+                <h5 class="card-title">{{ proyecto.titulo }}</h5>
+                <p class="card-text">{{ proyecto.descripcion }}</p>
+                <p class="card-text">Teknologia: <span id="{{ proyecto.id }}">{{ proyecto.tecnologia }}</span></p>
+                <p class="card-text">Nahi duzu teknologia aldatu?</p>
+                <form>
+                    {% csrf_token %}
+                    <input type="hidden" name="id" value="{{ proyecto.id }}"/>
+                    <input type="text" name="tecnologia"/>
+                    <input type="submit" value="Aldatu"/>
+                </form>
+                <p class="card-text">Nahi dituzu galderak ikusi? Egin klik
+                    <a id="{{ proyecto.pk }}" href="" class="btn btn-primary galdera">
+                        hemen
+                    </a>
+                    <ul id="lista{{ proyecto.id }}"></ul>
+                </p>
+                <br>
+                <a href="{% url 'proyecto_detail' proyecto.pk %}" class="btn btn-primary">
+                    Read More
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock page_content%}
+{% block javascript %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('submit', function (e) {
+        if (e.target.tagName.toLowerCase() === 'form') {
+            e.preventDefault();
+
+            const form = e.target;
+            const formData = new FormData(form);
+
+            fetch("{% url 'post_teknologia' %}", {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Errorea');
+                return response.json();
+            })
+            .then(data => {
+                const nodoa = document.getElementById(data.id);
+                if (nodoa) {
+                    nodoa.innerHTML = data.tecnologia;
+                }
+            })
+            .catch(error => {
+                alert("Ezin da aldatu. Saiatu beranduago");
+                console.error(error);
+            });
+        }
+    });
+    document.querySelectorAll('a.galdera').forEach(function (enlace) {
+        enlace.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            const csrftoken = getCookie('csrftoken');
+            const id = this.id;
+
+            fetch("{% url 'proyecto_galderak' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrftoken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: new URLSearchParams({ id })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Errorea');
+                return response.json();
+            })
+            .then(data => {
+                const nodoag = document.querySelector(`#lista${data[0].proyecto_id}`);
+                if (nodoag) {
+                    const lista = document.createElement('ul');
+                    data.forEach(entry => {
+                        const li = document.createElement('li');
+                        li.textContent = entry.pregunta_texto;
+                        lista.appendChild(li);
+                    });
+                    nodoag.innerHTML = '';
+                    nodoag.appendChild(lista);
+                }
+            })
+            .catch(error => {
+                alert("Ezin da atzitu. Saiatu beranduago");
+                console.error(error);
+            });
+        });
+    });
+
+    // CSRF token-a lortzeko funtzioa (Django-n beharrezkoa)
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Cookie horren izena bada, balioa atera
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock javascript %}
